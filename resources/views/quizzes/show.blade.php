@@ -2,9 +2,17 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h2 class="text-xl font-semibold text-gray-900 leading-tight">{{ $quiz->title }}</h2>
-            <span class="px-2 py-1 rounded text-xs {{ $quiz->status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700' }}">
-                {{ ucfirst($quiz->status) }}
-            </span>
+            <div class="flex items-center gap-3">
+                <span class="px-2 py-1 rounded text-xs {{ $quiz->status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700' }}">
+                    {{ ucfirst($quiz->status) }}
+                </span>
+                <form method="POST" action="{{ route('quizzes.publish', $quiz) }}">
+                    @csrf @method('PATCH')
+                    <button class="px-4 py-2 rounded-md text-sm font-medium {{ $quiz->status === 'draft' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50' }}">
+                        {{ $quiz->status === 'draft' ? 'Publish' : 'Unpublish' }}
+                    </button>
+                </form>
+            </div>
         </div>
     </x-slot>
 
