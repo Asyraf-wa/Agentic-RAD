@@ -1,16 +1,20 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <h2 class="text-xl font-semibold text-gray-900 leading-tight">
             {{ __('Dashboard') }}
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    {{ __("You're logged in!") }}
-                </div>
+    <div class="py-8">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="bg-white rounded-lg shadow p-6">
+                @if (auth()->user()->role === 'lecturer')
+                    <h3 class="text-lg font-medium text-gray-900">Welcome, {{ auth()->user()->name }}</h3>
+                    <p class="mt-2 text-sm text-gray-600">You are signed in as a lecturer. Create quizzes, add questions, and publish them for your students.</p>
+                @else
+                    <h3 class="text-lg font-medium text-gray-900">Welcome, {{ auth()->user()->name }}</h3>
+                    <p class="mt-2 text-sm text-gray-600">You are signed in as a student. Published quizzes will appear in your quiz list, ready to take.</p>
+                @endif
             </div>
         </div>
     </div>
