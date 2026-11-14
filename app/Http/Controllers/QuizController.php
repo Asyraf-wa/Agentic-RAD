@@ -11,12 +11,12 @@ class QuizController extends Controller
     public function index(Request $request)
     {
         if ($request->user()->role === 'lecturer') {
-            $quizzes = $request->user()->quizzes()->latest()->get();
+            $quizzes = $request->user()->quizzes()->withCount('questions')->latest()->get();
 
             return view('quizzes.index', ['quizzes' => $quizzes]);
         }
 
-        $quizzes = Quiz::where('status', 'published')->get();
+        $quizzes = Quiz::where('status', 'published')->withCount('questions')->get();
 
         return view('quizzes.student-index', ['quizzes' => $quizzes]);
     }
