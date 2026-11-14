@@ -17,8 +17,9 @@ class QuizController extends Controller
         }
 
         $quizzes = Quiz::where('status', 'published')->withCount('questions')->get();
+        $scores = $request->user()->attempts()->pluck('score', 'quiz_id');
 
-        return view('quizzes.student-index', ['quizzes' => $quizzes]);
+        return view('quizzes.student-index', ['quizzes' => $quizzes, 'scores' => $scores]);
     }
 
     public function create()
@@ -83,6 +84,16 @@ class QuizController extends Controller
 
         return redirect()->route('quizzes.show', $quiz)
             ->with('success', $quiz->status === 'published' ? 'Quiz published.' : 'Quiz unpublished.');
+    }
+
+    public function results(Quiz $quiz)
+    {
+        Gate::authorize('manage', $quiz);
+
+        $quiz->loadCount('questions');
+        $attempts = $quiz->attempts()->with('user')->latest('submitted_at')->get();
+
+        return view('quizzes.results', ['quiz' => $quiz, 'attempts' => $attempts]);
     }
 
     public function destroy(Quiz $quiz)

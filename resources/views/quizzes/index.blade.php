@@ -40,6 +40,7 @@
                                     <td class="px-4 py-3 text-gray-600">{{ $quiz->created_at->format('d M Y') }}</td>
                                     <td class="px-4 py-3 text-right whitespace-nowrap">
                                         <a href="{{ route('quizzes.show', $quiz) }}" class="text-indigo-600 hover:underline">Manage</a>
+                                        <a href="{{ route('quizzes.results', $quiz) }}" class="ml-3 text-indigo-600 hover:underline">Results</a>
                                         <a href="{{ route('quizzes.edit', $quiz) }}" class="ml-3 text-indigo-600 hover:underline">Edit</a>
                                         <form method="POST" action="{{ route('quizzes.destroy', $quiz) }}" class="inline ml-3"
                                               onsubmit="return confirm('Delete this quiz?')">
