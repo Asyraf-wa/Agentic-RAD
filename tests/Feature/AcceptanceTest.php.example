@@ -1,0 +1,214 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Quiz;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class VerifyTaskTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function lecturer(): User
+    {
+        return User::factory()->create(['role' => 'lecturer']);
+    }
+
+    private function student(): User
+    {
+        return User::factory()->create(['role' => 'student']);
+    }
+
+    public function test_dashboards_differ_by_role(): void
+    {
+        $this->actingAs($this->lecturer())->get('/dashboard')->assertOk()->assertSee('signed in as a lecturer');
+        $this->actingAs($this->student())->get('/dashboard')->assertOk()->assertSee('signed in as a student');
+    }
+
+    public function test_t4_lecturer_sees_empty_list_student_blocked_from_create(): void
+    {
+        $this->actingAs($this->lecturer())->get('/quizzes')->assertOk()->assertSee('No quizzes yet');
+        $this->actingAs($this->student())->get('/quizzes/create')->assertForbidden();
+    }
+
+    public function test_t5_crud_and_ownership(): void
+    {
+        $owner = $this->lecturer();
+        $other = $this->lecturer();
+
+        $this->actingAs($owner)->post('/quizzes', ['title' => 'Intro to HTML'])->assertRedirect('/quizzes');
+        $quiz = Quiz::first();
+        $this->assertSame('draft', $quiz->status);
+
+        $this->actingAs($owner)->put("/quizzes/{$quiz->id}", ['title' => 'Intro to CSS'])->assertRedirect('/quizzes');
+        $this->assertSame('Intro to CSS', $quiz->fresh()->title);
+
+        $this->actingAs($other)->get("/quizzes/{$quiz->id}/edit")->assertForbidden();
+        $this->actingAs($other)->delete("/quizzes/{$quiz->id}")->assertForbidden();
+
+        $this->actingAs($owner)->delete("/quizzes/{$quiz->id}")->assertRedirect('/quizzes');
+        $this->assertDatabaseCount('quizzes', 0);
+    }
+    public function test_t6_add_question_with_four_options_one_correct(): void
+    {
+        $owner = $this->lecturer();
+        $quiz = $owner->quizzes()->create(['title' => 'HTML Basics']);
+
+        $this->actingAs($owner)->post("/quizzes/{$quiz->id}/questions", [
+            'question_text' => 'What does HTML stand for?',
+            'options' => ['HyperText Markup Language', 'Home Tool ML', 'Hyperlink TML', 'HighText ML'],
+            'correct' => 0,
+        ])->assertRedirect("/quizzes/{$quiz->id}");
+
+        $this->assertDatabaseCount('questions', 1);
+        $this->assertDatabaseCount('options', 4);
+        $this->assertSame(1, \App\Models\Option::where('is_correct', true)->count());
+
+        $this->actingAs($owner)->post("/quizzes/{$quiz->id}/questions", [
+            'question_text' => 'Too few options',
+            'options' => ['a', 'b'],
+            'correct' => 0,
+        ])->assertSessionHasErrors('options');
+    }
+
+    public function test_t7_questions_listed_and_deletable(): void
+    {
+        $owner = $this->lecturer();
+        $quiz = $owner->quizzes()->create(['title' => 'CSS Basics']);
+        foreach (['Q one text', 'Q two text'] as $t) {
+            $q = $quiz->questions()->create(['question_text' => $t]);
+            foreach (range(0, 3) as $i) {
+                $q->options()->create(['option_text' => "opt $i", 'is_correct' => $i === 0]);
+            }
+        }
+
+        $this->actingAs($owner)->get("/quizzes/{$quiz->id}")->assertOk()
+            ->assertSeeInOrder(['1. Q one text', '2. Q two text']);
+
+        $other = $this->lecturer();
+        $first = $quiz->questions()->first();
+        $this->actingAs($other)->delete("/questions/{$first->id}")->assertForbidden();
+
+        $this->actingAs($owner)->delete("/questions/{$first->id}")->assertRedirect("/quizzes/{$quiz->id}");
+        $this->assertDatabaseCount('questions', 1);
+        $this->assertDatabaseCount('options', 4);
+    }
+    public function test_t8_publish_toggle_and_empty_quiz_guard(): void
+    {
+        $owner = $this->lecturer();
+        $empty = $owner->quizzes()->create(['title' => 'Empty quiz']);
+
+        $this->actingAs($owner)->patch("/quizzes/{$empty->id}/publish");
+        $this->assertSame('draft', $empty->fresh()->status);
+
+        $q = $empty->questions()->create(['question_text' => 'Q']);
+        foreach (range(0, 3) as $i) {
+            $q->options()->create(['option_text' => "o$i", 'is_correct' => $i === 0]);
+        }
+
+        $this->actingAs($owner)->patch("/quizzes/{$empty->id}/publish");
+        $this->assertSame('published', $empty->fresh()->status);
+
+        $this->actingAs($owner)->patch("/quizzes/{$empty->id}/publish");
+        $this->assertSame('draft', $empty->fresh()->status);
+    }
+
+    public function test_t9_student_sees_only_published(): void
+    {
+        $owner = $this->lecturer();
+        $owner->quizzes()->create(['title' => 'Draft quiz']);
+        $owner->quizzes()->create(['title' => 'Live quiz', 'status' => 'published']);
+
+        $this->actingAs($this->student())->get('/quizzes')->assertOk()
+            ->assertSee('Live quiz')
+            ->assertDontSee('Draft quiz');
+    }
+    private function publishedQuiz(User $owner, int $questions = 2): Quiz
+    {
+        $quiz = $owner->quizzes()->create(['title' => 'Published quiz', 'status' => 'published']);
+        foreach (range(1, $questions) as $n) {
+            $q = $quiz->questions()->create(['question_text' => "Question $n"]);
+            foreach (range(0, 3) as $i) {
+                $q->options()->create(['option_text' => "opt $i", 'is_correct' => $i === 0]);
+            }
+        }
+
+        return $quiz;
+    }
+
+    public function test_t10_take_page_access(): void
+    {
+        $quiz = $this->publishedQuiz($this->lecturer());
+        $student = $this->student();
+
+        $this->actingAs($student)->get("/quizzes/{$quiz->id}/take")->assertOk()->assertSee('Question 1');
+        $this->actingAs($this->lecturer())->get("/quizzes/{$quiz->id}/take")->assertForbidden();
+
+        $draft = $this->lecturer()->quizzes()->create(['title' => 'Draft']);
+        $this->actingAs($student)->get("/quizzes/{$draft->id}/take")->assertForbidden();
+    }
+
+    public function test_t11_submit_validates_and_blocks_second_attempt(): void
+    {
+        $quiz = $this->publishedQuiz($this->lecturer());
+        $student = $this->student();
+        [$q1, $q2] = $quiz->questions;
+
+        $this->actingAs($student)->post("/quizzes/{$quiz->id}/attempts", [
+            'answers' => [$q1->id => $q1->options[0]->id],
+        ])->assertSessionHasErrors("answers.{$q2->id}");
+
+        $this->actingAs($student)->post("/quizzes/{$quiz->id}/attempts", [
+            'answers' => [
+                $q1->id => $q1->options[0]->id,
+                $q2->id => $q2->options[1]->id,
+            ],
+        ])->assertRedirect('/quizzes');
+
+        $this->assertDatabaseCount('attempts', 1);
+        $this->actingAs($student)->get("/quizzes/{$quiz->id}/take")->assertForbidden();
+        $this->actingAs($student)->post("/quizzes/{$quiz->id}/attempts", [
+            'answers' => [$q1->id => $q1->options[0]->id, $q2->id => $q2->options[0]->id],
+        ])->assertForbidden();
+    }
+    public function test_t12_score_shown_on_student_list(): void
+    {
+        $quiz = $this->publishedQuiz($this->lecturer());
+        $student = $this->student();
+        [$q1, $q2] = $quiz->questions;
+
+        $correct1 = $q1->options->firstWhere('is_correct', true);
+        $correct2 = $q2->options->firstWhere('is_correct', true);
+
+        $this->actingAs($student)->post("/quizzes/{$quiz->id}/attempts", [
+            'answers' => [$q1->id => $correct1->id, $q2->id => $correct2->id],
+        ])->assertRedirect('/quizzes');
+
+        $this->assertSame(2, \App\Models\Attempt::first()->score);
+
+        $this->actingAs($student)->get('/quizzes')->assertOk()
+            ->assertSee('Your score: 2/2')
+            ->assertDontSee('Take quiz');
+    }
+
+    public function test_t13_results_page(): void
+    {
+        $owner = $this->lecturer();
+        $quiz = $this->publishedQuiz($owner);
+        $student = $this->student();
+        [$q1, $q2] = $quiz->questions;
+
+        $this->actingAs($owner)->get("/quizzes/{$quiz->id}/results")->assertOk()->assertSee('No attempts yet');
+
+        $this->actingAs($student)->post("/quizzes/{$quiz->id}/attempts", [
+            'answers' => [$q1->id => $q1->options[0]->id, $q2->id => $q2->options[1]->id],
+        ]);
+
+        $this->actingAs($owner)->get("/quizzes/{$quiz->id}/results")->assertOk()
+            ->assertSee($student->name)->assertSee('1/2');
+
+        $this->actingAs($student)->get("/quizzes/{$quiz->id}/results")->assertForbidden();
+    }
+}

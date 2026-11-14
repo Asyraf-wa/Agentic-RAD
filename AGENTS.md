@@ -1,47 +1,22 @@
-<laravel-boost-guidelines>
-# Laravel Application
+# AGENTS.md — Behaviour Manual
 
-This repository contains a Laravel application. Complete the following setup before working on the user's request.
+## Context
 
-## Prerequisites
+You are building EduQuiz inside a prepared Docker environment. The requirements are in `docs/PRD.md`, the system design in `docs/Architecture.md`, the visual rules in `docs/design.md`, and the roadmap in `docs/TODO.md`. These documents are the single source of truth.
 
-Verify that PHP and Composer are available:
+## Rules
 
-```sh
-php -v
-composer -V
-```
+1. **Do only the current task.** Implement exactly the TODO task you were given — nothing more. Do not add features, pages, or "improvements" the task does not ask for.
+2. **No new dependencies.** Never add composer or npm packages unless the task names the package. Specifically: no Spatie packages, no Livewire, no component libraries.
+3. **Blade and Tailwind only.** No JavaScript frameworks. No custom CSS files. Follow `docs/design.md` classes exactly.
+4. **The schema is fixed.** Create only the tables and columns in Architecture.md's ERD. Never add a column, table, or migration the task does not call for.
+5. **Validate and authorize.** Every form submission is validated; every quiz-management action checks ownership via `QuizPolicy`; role access follows Architecture.md's routes table.
+6. **Small diffs.** Touch only the files the task requires. Never refactor, rename, or reformat unrelated code.
+7. **Never touch the environment.** Do not edit `docker-compose.yml`, `.env`, or any file under `docker/`.
+8. **Verify before finishing.** Run the migrations and load the affected pages (or run the app's tests if present) before reporting done.
+9. **Report in a fixed format**: files created/changed, commands run, and one sentence telling a human how to verify in the browser (URL + what they should see).
+10. **Ask instead of guessing.** If the task is ambiguous or conflicts with any document, stop and ask — do not pick an interpretation silently.
 
-If either command is unavailable, detect the user's operating system and install the prerequisites with the appropriate command:
+## Commands
 
-macOS:
-
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/mac/8.5)"
-```
-
-Windows PowerShell:
-
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://php.new/install/windows/8.5'))
-```
-
-Linux:
-
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/linux/8.5)"
-```
-
-After installation, ask the user to restart their terminal. If the agent needs the restarted shell to continue, ask the user to reopen their terminal and rerun their original prompt.
-
-## Agent Setup
-
-Install Laravel Boost from the application root before making application changes:
-
-```sh
-composer require laravel/boost --dev
-php artisan boost:install
-```
-
-Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
-</laravel-boost-guidelines>
+All commands run inside the app container: `docker compose exec app php artisan …`. Assets: `docker compose exec node npm run dev` is already running; do not restart it.
