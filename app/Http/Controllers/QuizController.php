@@ -70,6 +70,21 @@ class QuizController extends Controller
         return redirect()->route('quizzes.index')->with('success', 'Quiz updated.');
     }
 
+    public function publish(Quiz $quiz)
+    {
+        Gate::authorize('manage', $quiz);
+
+        if ($quiz->status === 'draft' && $quiz->questions()->count() === 0) {
+            return redirect()->route('quizzes.show', $quiz)
+                ->with('error', 'Add at least one question before publishing.');
+        }
+
+        $quiz->update(['status' => $quiz->status === 'draft' ? 'published' : 'draft']);
+
+        return redirect()->route('quizzes.show', $quiz)
+            ->with('success', $quiz->status === 'published' ? 'Quiz published.' : 'Quiz unpublished.');
+    }
+
     public function destroy(Quiz $quiz)
     {
         Gate::authorize('manage', $quiz);
