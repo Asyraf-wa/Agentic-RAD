@@ -16,6 +16,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/quizzes/{quiz}/publish', [App\Http\Controllers\QuizController::class, 'publish'])->name('quizzes.publish');
     Route::get('/quizzes/{quiz}/take', [App\Http\Controllers\AttemptController::class, 'take'])->name('quizzes.take');
     Route::post('/quizzes/{quiz}/attempts', [App\Http\Controllers\AttemptController::class, 'store'])->name('attempts.store');
+    Route::get('/quizzes/{quiz}/results', [App\Http\Controllers\QuizController::class, 'results'])->name('quizzes.results');
     Route::post('/quizzes/{quiz}/questions', [App\Http\Controllers\QuestionController::class, 'store'])->name('questions.store');
     Route::delete('/questions/{question}', [App\Http\Controllers\QuestionController::class, 'destroy'])->name('questions.destroy');
 
