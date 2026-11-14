@@ -19,6 +19,8 @@
                         <div class="bg-white rounded-lg shadow p-6">
                             <h3 class="text-lg font-medium text-gray-900">{{ $quiz->title }}</h3>
                             <p class="mt-1 text-sm text-gray-600">{{ $quiz->questions_count ?? 0 }} questions</p>
+                            <a href="{{ route('quizzes.take', $quiz) }}"
+                               class="mt-4 inline-block px-4 py-2 rounded-md text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white">Take quiz</a>
                         </div>
                     @endforeach
                 </div>
